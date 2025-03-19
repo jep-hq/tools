@@ -1,106 +1,144 @@
 import json
-from functools import wraps
 import logging
+import traceback
+from functools import wraps
+from bson import ObjectId
+from pymongo.errors import PyMongoError
 from .database_connection import get_connection
 
-logger = logging.getLogger()
-
+logger = logging.getLogger(__name__)
 CUSTOMERS = {
     "yHA3jfw6TJ1fwkyIXYg7E5docfqvCkfyaJdlb0nw": "kleineprints",
     "dIgf2CEBIn8LBdNoysujxaFaIaDVR92T8VqREyzN": "pokal-total",
 }
 
 
-class Request:
-    db = None
-    customer = None
-    method = None
-    queryStringParameters = None
-    pathParameters = None
-    body = None
-    context = None
-
-    def __init__(self, event, context, customer, db_connection):
-        self.db = db_connection
-        self.customer = customer
-        self.event = event
-        self.context = context
-        self.method = event.get("httpMethod")
-        self.queryStringParameters = event.get("queryStringParameters")
-        self.pathParameters = event.get("pathParameters")
-        # if body is a string, parse it as JSON
-        if isinstance(event.get("body"), str):
-            self.body = json.loads(event.get("body"))
-        else:
-            self.body = event.get("body", {})
+# Custom JSON encoder to handle MongoDB ObjectId
+class JSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return super(JSONEncoder, self).default(obj)
 
 
 def api(handler):
     """
-    Decorator für AWS Lambda Handler, der Antworten entsprechend formatiert
-    und Fehlerbehandlung bietet.
+    Decorator for AWS Lambda functions with API Gateway integration.
+    - Formats responses in correct API Gateway format
+    - Adds CORS headers
+    - Includes error handling
+    - Returns proxy integration compatible responses
     """
 
     @wraps(handler)
-    async def wrapper(event, context):
+    def wrapper(event, context):
+        logger.debug(f"Event: {event}")
+
         try:
-            # OPTIONS requests answers with 200 OK
+            # Get database connection
+            db_connection = get_connection()
+
+            # OPTIONS requests for CORS
             if event.get("httpMethod") == "OPTIONS":
                 return {
                     "statusCode": 200,
                     "headers": {
                         "Content-Type": "application/json",
                         "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Credentials": True,
+                        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
+                        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+                        "Access-Control-Allow-Credentials": "true",
                     },
-                    "body": json.dumps({}),
+                    "body": "{}",
                 }
-
-            # get customer from headers
             customer = CUSTOMERS.get(event.get("headers", {}).get("x-api-key"))
             if not customer:
                 return {
                     "statusCode": 401,
                     "body": json.dumps({"error": "Unauthorized"}),
                 }
+            # Create Request object
+            request = Request(event, context, db=db_connection)
 
-            response = await handler(
-                Request(event, context, customer, get_connection())
-            )
+            # Execute handler
+            response = handler(request)
 
-            # Sicherstellen, dass wir ein standardisiertes Antwortformat haben
-            if not isinstance(response, dict):
-                response = {"statusCode": 200, "body": response}
+            # Handle tuple response from APIResponse methods
+            if isinstance(response, tuple) and len(response) == 2:
+                body, status_code = response
 
-            # Standardwerte für statusCode und body
-            status_code = response.get("statusCode", 200)
-            body = response.get("body", {})
+                # API Gateway expects string for body
+                if not isinstance(body, str):
+                    body = json.dumps(body, cls=JSONEncoder)
 
-            # Konvertiere body zu JSON-String, wenn es kein String ist
-            if not isinstance(body, str):
-                body = json.dumps(body, default=str)
+                # Return API Gateway compatible response
+                return {
+                    "statusCode": status_code,
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
+                        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+                        "Access-Control-Allow-Credentials": "true",
+                    },
+                    "body": body,
+                }
 
-            # Rückgabe im API-Gateway-Format
+            # If the handler returned a direct API Gateway response
+            return response
+
+        except PyMongoError as e:
+            logger.error(f"MongoDB Error: {str(e)}")
             return {
-                "statusCode": status_code,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Credentials": True,
-                },
-                "body": body,
-            }
-        except Exception as e:
-            logger.error(f"Unbehandelte Ausnahme: {str(e)}")
-            error_response = {
                 "statusCode": 500,
                 "headers": {
                     "Content-Type": "application/json",
                     "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Credentials": True,
+                    "Access-Control-Allow-Credentials": "true",
                 },
-                "body": json.dumps({"error": "Internal Server Error"}),
+                "body": json.dumps(
+                    {"error": "Database error", "message": str(e)}
+                ),
             }
-            return error_response
+        except Exception as e:
+            logger.error(f"Unhandled exception: {str(e)}")
+            logger.error(traceback.format_exc())
+            return {
+                "statusCode": 500,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Credentials": "true",
+                },
+                "body": json.dumps(
+                    {"error": "Internal server error", "message": str(e)}
+                ),
+            }
 
     return wrapper
+
+
+class Request:
+    """Encapsulation of Lambda event and context data."""
+
+    def __init__(self, event, context, customer=None, db=None):
+        self.event = event
+        self.context = context
+        self.customer = customer
+        self.db = db
+        self.method = event.get("httpMethod")
+        self.pathParameters = event.get("pathParameters", {}) or {}
+        self.queryStringParameters = (
+            event.get("queryStringParameters", {}) or {}
+        )
+        self.body = self._parse_body(event.get("body"))
+
+    def _parse_body(self, body):
+        """Parse request body as JSON."""
+        if not body:
+            return {}
+        try:
+            return json.loads(body)
+        except Exception as e:
+            logger.error(f"Error parsing JSON body: {str(e)}")
+            return {}
