@@ -1,0 +1,35 @@
+list:
+  handler: functions/project.list
+  events:
+    - http:
+        method: GET
+        path: /projects
+        private: false
+get:
+  handler: functions/project.get
+  events:
+    - http:
+        method: GET
+        path: /projects/{id}
+        private: false
+create:
+  handler: functions/project.create
+  events:
+    - http:
+        method: POST
+        path: /projects
+        private: false
+update:
+  handler: functions/project.update
+  events:
+    - http:
+        method: PUT
+        path: /projects/{id}
+        private: false
+delete:
+  handler: functions/project.delete
+  events:
+    - http:
+        method: DELETE
+        path: /projects/{id}
+        private: false

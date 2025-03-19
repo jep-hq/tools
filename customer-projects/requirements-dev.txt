@@ -1,0 +1,8 @@
+-r requirements.txt
+boto3
+pylint
+pre-commit
+pytest
+pytest-cov
+black
+pyhamcrest
