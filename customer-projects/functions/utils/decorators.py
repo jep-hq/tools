@@ -5,11 +5,18 @@ from functools import wraps
 from bson import ObjectId
 from pymongo.errors import PyMongoError
 from .database_connection import get_connection
+from .aws_lambda_proxy import LambdaApi
+from .response import APIResponse
 
 logger = logging.getLogger(__name__)
 CUSTOMERS = {
     "yHA3jfw6TJ1fwkyIXYg7E5docfqvCkfyaJdlb0nw": "kleineprints",
     "dIgf2CEBIn8LBdNoysujxaFaIaDVR92T8VqREyzN": "pokal-total",
+}
+
+# Standardized CORS Headers
+CORS_HEADERS = {
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent"
 }
 
 
@@ -24,96 +31,74 @@ class JSONEncoder(json.JSONEncoder):
 def api(handler):
     """
     Decorator for AWS Lambda functions with API Gateway integration.
-    - Formats responses in correct API Gateway format
+    - Formats responses in correct API Gateway format using LambdaApi
     - Adds CORS headers
     - Includes error handling
     - Returns proxy integration compatible responses
     """
 
+    # Create LambdaApi instance for response handling
+    lambda_api = LambdaApi("api", debug=True)
+
     @wraps(handler)
     def wrapper(event, context):
         logger.debug(f"Event: {event}")
 
-        try:
-            # Get database connection
-            db_connection = get_connection()
+        # Create a mock route entry for use with LambdaApi
+        class RouteEntry:
+            def __init__(self, method, cors=True):
+                self.method = method
+                self.cors = cors
+                self.compression = ""
+                self.b64encode = False
+                self.ttl = None
 
-            # OPTIONS requests for CORS
-            if event.get("httpMethod") == "OPTIONS":
-                return {
-                    "statusCode": 200,
-                    "headers": {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
-                        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-                        "Access-Control-Allow-Credentials": "true",
-                    },
-                    "body": "{}",
-                }
-            customer = CUSTOMERS.get(event.get("headers", {}).get("x-api-key"))
-            if not customer:
-                return {
-                    "statusCode": 401,
-                    "body": json.dumps({"error": "Unauthorized"}),
-                }
-            # Create Request object
-            request = Request(event, context, db=db_connection)
+        # Get database connection
+        db_connection = get_connection()
 
-            # Execute handler
-            response = handler(request)
+        http_method = event.get("httpMethod", "GET")
+        headers = event.get("headers", {}) or {}
+        headers.update(CORS_HEADERS)  # Apply standard CORS headers
+        route_entry = RouteEntry(method=http_method)
 
-            # Handle tuple response from APIResponse methods
-            if isinstance(response, tuple) and len(response) == 2:
-                body, status_code = response
+        # OPTIONS requests for CORS
+        if http_method == "OPTIONS":
+            return lambda_api.process_response(
+                route_entry=route_entry,
+                response=(
+                    {},
+                    200,
+                ),  # No need to specify content-type, it's the default
+                headers=headers,
+            )
 
-                # API Gateway expects string for body
-                if not isinstance(body, str):
-                    body = json.dumps(body, cls=JSONEncoder)
+        customer = CUSTOMERS.get(headers.get("x-api-key"))
+        if not customer:
+            response_tuple = APIResponse.not_authorized()
+            return lambda_api.process_response(
+                route_entry=route_entry,
+                response=response_tuple,
+                headers=headers,
+            )
 
-                # Return API Gateway compatible response
-                return {
-                    "statusCode": status_code,
-                    "headers": {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
-                        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-                        "Access-Control-Allow-Credentials": "true",
-                    },
-                    "body": body,
-                }
+        # Create Request object
+        request = Request(
+            event, context, customer=customer, db=db_connection[customer]
+        )
 
-            # If the handler returned a direct API Gateway response
-            return response
+        # Execute handler
+        response = handler(request)
 
-        except PyMongoError as e:
-            logger.error(f"MongoDB Error: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                },
-                "body": json.dumps(
-                    {"error": "Database error", "message": str(e)}
-                ),
-            }
-        except Exception as e:
-            logger.error(f"Unhandled exception: {str(e)}")
-            logger.error(traceback.format_exc())
-            return {
-                "statusCode": 500,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                },
-                "body": json.dumps(
-                    {"error": "Internal server error", "message": str(e)}
-                ),
-            }
+        # Handle tuple response from APIResponse methods
+        if isinstance(response, tuple) and len(response) == 2:
+            return lambda_api.process_response(
+                route_entry=RouteEntry(method=http_method),
+                response=response,  # APIResponse already returns properly formatted tuples
+                headers=headers,
+            )
+
+        # If the handler returned a direct API Gateway response
+        return response
 
     return wrapper
 

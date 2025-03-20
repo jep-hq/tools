@@ -5,7 +5,7 @@
     "remove": "serverless remove"
   },
   "dependencies": {
-    "@tes/serverless-default": "npm:@jsr/tes__serverless-default@^0.1.9",
+    "@tes/serverless-default": "npm:@jsr/tes__serverless-default@^0.1.10",
     "serverless": "^4.9.0",
     "serverless-domain-manager": "^8.0.0",
     "serverless-iam-roles-per-function": "^3.2.0",

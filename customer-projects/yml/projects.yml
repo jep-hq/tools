@@ -1,32 +1,32 @@
-list:
-  handler: functions/project.list
+projectCollection:
+  handler: functions/project.collection
   events:
     - http:
         method: GET
         path: /projects
         private: false
-get:
+projectGet:
   handler: functions/project.get
   events:
     - http:
         method: GET
         path: /projects/{id}
         private: false
-create:
+projectCreate:
   handler: functions/project.create
   events:
     - http:
         method: POST
         path: /projects
         private: false
-update:
+projectUpdate:
   handler: functions/project.update
   events:
     - http:
         method: PUT
         path: /projects/{id}
         private: false
-delete:
+projectDelete:
   handler: functions/project.delete
   events:
     - http:

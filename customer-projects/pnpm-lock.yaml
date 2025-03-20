@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@tes/serverless-default':
-        specifier: npm:@jsr/tes__serverless-default@^0.1.9
-        version: '@jsr/tes__serverless-default@0.1.9'
+        specifier: npm:@jsr/tes__serverless-default@^0.1.10
+        version: '@jsr/tes__serverless-default@0.1.10'
       serverless:
         specifier: ^4.9.0
         version: 4.9.0
@@ -230,8 +230,8 @@ packages:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
 
-  '@jsr/tes__serverless-default@0.1.9':
-    resolution: {integrity: sha512-TKGaQUhcZUb1D2DmvstElEZWxSLig6RSiCfQ+RoPcaL2CGpul8G1zVoSN6RyNCENtwlVdbdA9daZGA29asWXDA==, tarball: https://npm.jsr.io/~/11/@jsr/tes__serverless-default/0.1.9.tgz}
+  '@jsr/tes__serverless-default@0.1.10':
+    resolution: {integrity: sha512-SyeJmfAxw3TeCoqCzwL3a/PXd57Qao8caU978jGbRdD2xLMqtjjSvXySHt24m03pC92HGmqvOEFIGyDUwf2dtw==, tarball: https://npm.jsr.io/~/11/@jsr/tes__serverless-default/0.1.10.tgz}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -2059,7 +2059,7 @@ snapshots:
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
 
-  '@jsr/tes__serverless-default@0.1.9': {}
+  '@jsr/tes__serverless-default@0.1.10': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
