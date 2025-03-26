@@ -29,7 +29,7 @@ class APIResponse:
 
     @staticmethod
     def ok_nobody():
-        return {}, 201
+        return "", 204
 
     @staticmethod
     def not_found(message="not found", detail=""):

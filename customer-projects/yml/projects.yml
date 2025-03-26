@@ -33,3 +33,7 @@ projectDelete:
         method: DELETE
         path: /projects/{id}
         private: false
+projectProduce:
+  handler: functions/project.events_produce
+  events:
+    - sns: ${self:service}-${opt:stage, sls:stage}-projectEventsProduce

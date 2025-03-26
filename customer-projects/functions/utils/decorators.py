@@ -1,9 +1,7 @@
 import json
 import logging
-import traceback
 from functools import wraps
 from bson import ObjectId
-from pymongo.errors import PyMongoError
 from .database_connection import get_connection
 from .aws_lambda_proxy import LambdaApi
 from .response import APIResponse
