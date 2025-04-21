@@ -76,9 +76,18 @@ def places(request):
         should_update = True
     elif place.get("updated_at"):
         updated_at = place["updated_at"]
-        if updated_at < datetime.datetime.now(
-            datetime.timezone.utc
-        ) - datetime.timedelta(days=30):
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+
+        # Fix the datetime comparison by ensuring both are timezone-aware
+        if (
+            isinstance(updated_at, datetime.datetime)
+            and updated_at.tzinfo is None
+        ):
+            # Convert naive datetime to aware datetime with UTC timezone
+            updated_at = updated_at.replace(tzinfo=datetime.timezone.utc)
+
+        # Now compare the datetimes (both timezone-aware)
+        if updated_at < current_time - datetime.timedelta(days=30):
             should_update = True
 
     if should_update:
