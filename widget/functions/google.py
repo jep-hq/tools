@@ -50,18 +50,9 @@ def get_place(place_id):
     }
 
     response = requests.get(url, params=params)
-    if response.status_code != 200:
-        raise Exception(
-            f"Google API request failed with status code {response.status_code}: {response.text}"
-        )
+    response.raise_for_status()
 
-    data = response.json()
-    if data.get("status") != "OK":
-        raise Exception(
-            f"Google API returned error: {data.get('status')}, {data.get('error_message')}"
-        )
-
-    return data.get("result")
+    return response.json()
 
 
 @api
