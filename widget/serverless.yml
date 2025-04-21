@@ -1,0 +1,44 @@
+org: jepdev
+
+service: sls-${self:custom.prefix}-${self:custom.name}
+
+plugins:
+  - "@tes/serverless-default"
+  - serverless-iam-roles-per-function
+  - serverless-plugin-lambda-insights
+  - serverless-domain-manager
+  - serverless-python-requirements
+
+custom:
+  prefix: jep-tools
+  name: widget
+  customDomain:
+    rest:
+      domainName: widget.tools.jep-dev.com
+      certificateName: tools.jep-dev.com
+
+provider:
+  name: aws
+  region: eu-central-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - kms:Decrypt
+          Resource: "*" # Idealerweise einschränken auf Ihren spezifischen KMS-Schlüssel
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - "arn:aws:ssm:${aws:region}:${aws:accountId}:parameter/TES_DB_URI-*"
+            - "arn:aws:ssm:${aws:region}:${aws:accountId}:parameter/JEP_TOOLS_GOOGLE_API"
+  environment:
+    GOOGLE_API_KEY: ${ssm:JEP_TOOLS_GOOGLE_API}
+
+package:
+  excludeDevDependencies: true
+
+functions:
+  - ${file(./yml/google.yml)}

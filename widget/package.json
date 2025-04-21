@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "sls": "serverless",
+    "deploy": "serverless deploy",
+    "remove": "serverless remove"
+  },
+  "dependencies": {
+    "@tes/serverless-default": "npm:@jsr/tes__serverless-default@^0.1.11",
+    "serverless": "^4.9.0",
+    "serverless-domain-manager": "^8.0.0",
+    "serverless-iam-roles-per-function": "^3.2.0",
+    "serverless-plugin-lambda-insights": "^2.0.0",
+    "serverless-python-requirements": "^6.1.2"
+  }
+}

@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 80
+target-version = ["py313"]
+include = '\.pyi?$'
+
+[tool.vulture]
+ignore_names = ["context", "*_mock"]
+make_whitelist = true
+min_confidence = 80
+paths = ["functions", "tests"]
+sort_by_size = true

@@ -1,0 +1,7 @@
+googlePlaces:
+  handler: functions/google.places
+  events:
+    - http:
+        method: GET
+        path: /google/places/{id}
+        private: false
