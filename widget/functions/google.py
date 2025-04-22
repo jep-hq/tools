@@ -1,11 +1,10 @@
 import os
 import datetime
-import json
 import requests
 from .utils.decorators import api
 from .utils.response import APIResponse
-import pymongo
 from bson import ObjectId
+import base64
 
 
 TABLE_NAMES = {
@@ -69,7 +68,6 @@ def places(request):
         {"place_id": place_id, "customer_id": customer["_id"]},
     )
 
-    # ChIJ5Q-z7fsqkUcRGewaeQWCHZA
     should_update = False
     # If place doesn't exist or needs updating
     if not place:
@@ -131,3 +129,52 @@ def places(request):
         place["customer_id"] = str(place["customer_id"])
 
     return APIResponse.ok({"place": place})
+
+
+@api
+def static_map(request):
+    customer = get_customer(request)
+    if not customer:
+        return APIResponse.not_authorized()
+
+    # find places by code and customer_id
+    place_id = request.pathParameters.get("place_id")
+    if not place_id:
+        return APIResponse.bad_request("code is required")
+
+    place = request.db[TABLE_NAMES["google_places"]].find_one(
+        {"place_id": place_id, "customer_id": customer["_id"]},
+    )
+
+    if not place:
+        return APIResponse.not_found("Place not found")
+
+    # Clean the response before returning
+    if "_id" in place and isinstance(place["_id"], ObjectId):
+        place["_id"] = str(place["_id"])
+    if "customer_id" in place and isinstance(place["customer_id"], ObjectId):
+        place["customer_id"] = str(place["customer_id"])
+
+    # Office location for Dr. Seegers practice (adjust as needed)
+    center = f"{place['location'].get('latitude', 0)},{place['location'].get('longitude', 0)}"
+    zoom = "15"
+    size = "600x400"
+    markers = f"color:red|{center}"
+
+    # Construct the Google Maps Static API URL
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    url = f"https://maps.googleapis.com/maps/api/staticmap?center={center}&zoom={zoom}&size={size}&markers={markers}&key={api_key}"
+
+    print(f"Google Maps URL: {url}")
+    # Make the request to Google Maps API
+    response = requests.get(url, stream=True)
+
+    response.raise_for_status()
+
+    return (
+        response.content,
+        200,
+        "image/png",
+        None,
+        True,
+    )

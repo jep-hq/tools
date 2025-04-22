@@ -73,7 +73,7 @@ def api(handler):
         response = handler(request)
 
         # Handle tuple response from APIResponse methods
-        if isinstance(response, tuple) and len(response) == 2:
+        if isinstance(response, tuple) and len(response) >= 2:
             return lambda_api.process_response(
                 route_entry=RouteEntry(method=http_method),
                 response=response,  # APIResponse already returns properly formatted tuples

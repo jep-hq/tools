@@ -5,3 +5,10 @@ googlePlaces:
         method: GET
         path: /google/places/{id}
         private: false
+googleMapStatic:
+  handler: functions/google.static_map
+  events:
+    - http:
+        method: GET
+        path: /google/static-map/{place_id}
+        private: false

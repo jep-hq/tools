@@ -141,12 +141,15 @@ class LambdaApi:
         # Default values
         content_type = "application/json"
         location = None
+        b64encode = False
 
         # Extract optional parameters from the response
         if len(response) > 2:
             content_type = response[2]
         if len(response) > 3:
             location = response[3]
+        if len(response) > 4:
+            b64encode = response[4]
 
         return LambdaResponse.create(
             status=response[1],
@@ -156,7 +159,7 @@ class LambdaApi:
             accepted_methods=[route_entry.method],
             accepted_compression=headers.get("accept-encoding", ""),
             compression=route_entry.compression,
-            b64encode=route_entry.b64encode,
+            b64encode=b64encode,
             ttl=route_entry.ttl,
             location=location,
         )
