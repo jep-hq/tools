@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "@tes/serverless-default": "npm:@jsr/tes__serverless-default@^0.1.11",
-    "serverless": "^4.9.0",
+    "serverless": "^4.14.3",
     "serverless-domain-manager": "^8.0.0",
     "serverless-iam-roles-per-function": "^3.2.0",
     "serverless-plugin-lambda-insights": "^2.0.0",

@@ -85,6 +85,7 @@ def create(request):
             "tool": inc_body["tool"],
             "source": inc_body["source"],
             "customer_id": inc_body["customer_id"],
+            "template_name": inc_body.get("template_name", ""),
             "product": {
                 "id": inc_body["product"]["id"],
                 "name": inc_body["product"]["name"],
