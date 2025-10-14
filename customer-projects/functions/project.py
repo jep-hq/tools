@@ -72,6 +72,10 @@ def create(request):
         "created_at": datetime_current,
     }
 
+    # cancel if token is empty else every new project will be saved in one and the same project
+    if not new_change["token"]:
+        return APIResponse.bad_request("token is required")
+
     # check if token_old alread exists in DB
     existing_project = collection.find_one(
         {"changes.token": inc_body["token_old"]}
