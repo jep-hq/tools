@@ -174,6 +174,8 @@ def delete(request):
 
 def check_customer_id_match(db, id, customer_id):
     # check if customer_id is set on project (DB). If it is, make sure it matches the query param. If not ignore an empty customer_id in query param
+    if not ObjectId.is_valid(id):
+        return False
     existing_project = db[TABLE_NAME].find_one({"_id": ObjectId(id)})
     if existing_project and existing_project.get("customer_id"):
         if existing_project["customer_id"] != customer_id:
