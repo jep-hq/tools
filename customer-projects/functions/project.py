@@ -135,13 +135,18 @@ def update(request):
     if not id:
         return APIResponse.bad_request("id is required")
     customer_id = request.queryStringParameters.get("customer_id")
-    if not customer_id:
-        return APIResponse.bad_request("customer_id is required")
+
+    # check if customer_id is set on project (DB). If it is, make sure it matches the query param. If not ignore an empty customer_id in query param
+    if not check_customer_id_match(request.db, id, customer_id):
+        return APIResponse.bad_request("customer_id does not match the project")
 
     updated = request.db[TABLE_NAME].update_one(
         {"_id": ObjectId(id), "customer_id": customer_id}, {"$set": project}
     )
-    return APIResponse.ok(updated)
+    if updated.modified_count == 1:
+        project = request.db[TABLE_NAME].find_one({"_id": ObjectId(id)})
+        return APIResponse.ok(project)
+    return APIResponse.error_unknown("unknown error occured")
 
 
 @api
@@ -150,8 +155,9 @@ def delete(request):
     if not id:
         return APIResponse.bad_request("id is required")
     customer_id = request.queryStringParameters.get("customer_id")
-    if not customer_id:
-        return APIResponse.bad_request("customer_id is required")
+
+    if not check_customer_id_match(request.db, id, customer_id):
+        return APIResponse.bad_request("customer_id does not match the project")
 
     updated = request.db[TABLE_NAME].update_one(
         {"_id": ObjectId(id), "customer_id": customer_id},
@@ -165,6 +171,14 @@ def delete(request):
     if updated.modified_count == 1:
         return APIResponse.ok_nobody()
     return APIResponse.error_unknown("unknown error occured")
+
+def check_customer_id_match(db, project, customer_id):
+    # check if customer_id is set on project (DB). If it is, make sure it matches the query param. If not ignore an empty customer_id in query param
+    existing_project = db[TABLE_NAME].find_one({"_id": ObjectId(id)})
+    if existing_project and existing_project.get("customer_id"):
+        if existing_project["customer_id"] != customer_id:
+            return False
+    return True
 
 
 def events_produce(event, context):
