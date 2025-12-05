@@ -147,10 +147,11 @@ def update(request):
     updated = request.db[TABLE_NAME].update_one(
         {"_id": ObjectId(id), "customer_id": customer_id}, {"$set": update_data}
     )
+    print(updated.modified_count)
     if updated.modified_count == 1:
         project = request.db[TABLE_NAME].find_one({"_id": ObjectId(id)})
         return APIResponse.ok(project)
-    return APIResponse.error_unknown("unknown error occured")
+    return APIResponse.error_unknown("unknown error occured: {}".format(updated.modified_count))
 
 
 @api
