@@ -144,14 +144,18 @@ def update(request):
     if "customer_id" in update_data and existng_project.get("customer_id") != "":
         return APIResponse.bad_request("customer_id cannot be changed to a different value")
 
+    filters = {"_id": ObjectId(id)}
+    if existng_project.get("customer_id") != "":
+        filters["customer_id"] = customer_id
+
     updated = request.db[TABLE_NAME].update_one(
-        {"_id": ObjectId(id), "customer_id": customer_id}, {"$set": update_data}
+        filters, {"$set": update_data}
     )
-    print(updated.modified_count)
+
     if updated.modified_count == 1:
         project = request.db[TABLE_NAME].find_one({"_id": ObjectId(id)})
         return APIResponse.ok(project)
-    return APIResponse.error_unknown("unknown error occured: {}".format(updated.modified_count))
+    return APIResponse.error_unknown("unknown error occured")
 
 
 @api
